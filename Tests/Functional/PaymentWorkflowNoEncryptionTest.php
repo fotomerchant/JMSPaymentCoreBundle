@@ -2,8 +2,13 @@
 
 namespace JMS\Payment\CoreBundle\Tests\Functional;
 
-class PaymentWorkflowTest extends BasePaymentWorkflowTest
+class PaymentWorkflowNoEncryptionTest extends BasePaymentWorkflowTest
 {
+    protected static function createKernel(array $options = array())
+    {
+        return parent::createKernel(array('config' => 'config_no_encryption.yml'));
+    }
+
     /**
      * @runInSeparateProcess
      */
@@ -13,6 +18,6 @@ class PaymentWorkflowTest extends BasePaymentWorkflowTest
 
         $extendedData = $this->getRawExtendedData($order->getPaymentInstruction());
         $this->assertArrayHasKey('foo', $extendedData);
-        $this->assertNotEquals('bar', $extendedData['foo'][0]);
+        $this->assertEquals('bar', $extendedData['foo'][0]);
     }
 }

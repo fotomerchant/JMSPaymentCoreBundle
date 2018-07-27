@@ -24,17 +24,16 @@ class OrderController extends Controller
      */
     public function paymentDetailsAction(Order $order)
     {
-        $formType = Legacy::supportsFormTypeName()
-            ? 'jms_choose_payment_method'
-            : 'JMS\Payment\CoreBundle\Form\ChoosePaymentMethodType'
+        $formType = Legacy::supportsFormTypeClass()
+            ? 'JMS\Payment\CoreBundle\Form\ChoosePaymentMethodType'
+            : 'jms_choose_payment_method'
         ;
 
         $form = $this->get('form.factory')->create($formType, null, array(
             'currency' => 'EUR',
             'amount' => $order->getAmount(),
-            'csrf_protection' => false,
             'predefined_data' => array(
-                'paypal_express_checkout' => array(
+                'test_plugin' => array(
                     'foo' => 'bar',
                 ),
             ),

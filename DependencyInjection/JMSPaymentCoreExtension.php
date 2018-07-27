@@ -3,13 +3,11 @@
 namespace JMS\Payment\CoreBundle\DependencyInjection;
 
 use JMS\Payment\CoreBundle\Entity\ExtendedDataType;
-use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
-use Symfony\Component\HttpKernel\Kernel;
 
 /*
  * Copyright 2010 Johannes M. Schmitt <schmittjoh@gmail.com>
@@ -45,16 +43,30 @@ class JMSPaymentCoreExtension extends Extension implements PrependExtensionInter
         $xmlLoader = new XmlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
         $xmlLoader->load('payment.xml');
 
-        $configuration = new Configuration();
-        $processor = new Processor();
-        $config = $processor->process($configuration->getConfigTree(), $configs);
+        $config = $this->processConfiguration(
+            $this->getConfiguration($configs, $container),
+            $configs
+        );
 
-        if (isset($config['secret'])) {
-            $container->setParameter('payment.encryption_service.secret', $config['secret']);
-        }
+        $container->setParameter('payment.encryption.enabled', $config['encryption']['enabled']);
 
-        if (version_compare(Kernel::VERSION, '2.1.0-DEV', '<')) {
-            $container->removeDefinition('payment.form.choose_payment_method_type');
+        if ($config['encryption']['enabled']) {
+            $container->setParameter('payment.encryption', $config['encryption']['provider']);
+            $container->setParameter('payment.encryption.secret', $config['encryption']['secret']);
+
+            foreach (array('mcrypt', 'defuse_php_encryption') as $provider) {
+                $container->setParameter("payment.encryption.$provider.secret", $config['encryption']['secret']);
+            }
+        } else {
+            $container->removeAlias('payment.encryption_service');
+            $container->removeDefinition('payment.encryption');
+            $container->removeDefinition('payment.encryption.mcrypt');
+            $container->removeDefinition('payment.encryption.defuse_php_encryption');
         }
+    }
+
+    public function getConfiguration(array $config, ContainerBuilder $container)
+    {
+        return new Configuration($this->getAlias());
     }
 }

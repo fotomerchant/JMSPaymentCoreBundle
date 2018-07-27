@@ -1,5 +1,6 @@
 imports:
     - { resource: database.php }
+    - { resource: framework.php }
 
 doctrine:
     orm:

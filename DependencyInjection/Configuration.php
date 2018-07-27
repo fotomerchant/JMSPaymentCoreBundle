@@ -3,6 +3,7 @@
 namespace JMS\Payment\CoreBundle\DependencyInjection;
 
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
+use Symfony\Component\Config\Definition\ConfigurationInterface;
 
 /*
  * Copyright 2010 Johannes M. Schmitt <schmittjoh@gmail.com>
@@ -20,18 +21,63 @@ use Symfony\Component\Config\Definition\Builder\TreeBuilder;
  * limitations under the License.
  */
 
-class Configuration
+class Configuration implements ConfigurationInterface
 {
-    public function getConfigTree()
-    {
-        $tb = new TreeBuilder();
+    private $alias;
 
-        return $tb
-            ->root('jms_payment_core', 'array')
-                ->children()
-                    ->scalarNode('secret')->isRequired()->cannotBeEmpty()->end()
+    public function __construct($alias)
+    {
+        $this->alias = $alias;
+    }
+
+    public function getConfigTreeBuilder()
+    {
+        $builder = new TreeBuilder();
+
+        $builder->root($this->alias, 'array')
+            ->children()
+                ->arrayNode('encryption')
+                    ->canBeEnabled()
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('provider')->defaultValue('defuse_php_encryption')->end()
+                        ->scalarNode('secret')->cannotBeEmpty()->end()
+                    ->end()
+                    ->validate()
+                        ->ifTrue(function ($config) {
+                            return $config['enabled'] && !array_key_exists('secret', $config);
+                        })
+                        ->thenInvalid('An encryption secret is required')
+                    ->end()
+                ->end()
+                ->scalarNode('secret')
+                    ->cannotBeEmpty()
+                    ->info($this->getSecretDeprecationMessage())
                 ->end()
             ->end()
-            ->buildTree();
+            ->beforeNormalization()
+                ->ifTrue(function ($config) {
+                    return !empty($config['secret']);
+                })
+                ->then(function ($config) {
+                    @trigger_error($this->getSecretDeprecationMessage(), E_USER_DEPRECATED);
+
+                    $config['encryption'] = array(
+                        'enabled'  => true,
+                        'provider' => 'mcrypt',
+                        'secret'   => $config['secret'],
+                    );
+
+                    return $config;
+                })
+            ->end()
+        ;
+
+        return $builder;
+    }
+
+    private function getSecretDeprecationMessage()
+    {
+        return "The 'secret' configuration option has been deprecated in favor of 'encryption.secret' and will be removed in 2.0. Please note that if you start using 'encryption.secret' you also need to set 'encryption.provider' to 'mcrypt' since mcrypt is not the default when using the 'encryption.*' options.";
     }
 }

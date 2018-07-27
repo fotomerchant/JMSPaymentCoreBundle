@@ -3,8 +3,6 @@
 
 include_once 'common.php';
 
-run('composer self-update');
-
 if (isLatestPhp() && isLatestSymfony()) {
     // Make sure composer.json references all necessary components by having one
     // job run a `composer update`. Since `composer update` will install the
@@ -12,11 +10,6 @@ if (isLatestPhp() && isLatestSymfony()) {
     // latest symfony version.
     run('composer update --prefer-dist');
 } else {
-    if (getPhpVersion() === '5.3') {
-        // Prevent Travis throwing an out of memory error
-        run('echo "memory_limit=-1" >> ~/.phpenv/versions/5.3/etc/conf.d/travis.ini');
-    }
-
     run('composer require --prefer-dist symfony/symfony:'.getSymfonyVersion());
 }
 
