@@ -8,13 +8,15 @@ if (isLatestPhp() && isLatestSymfony()) {
     // job run a `composer update`. Since `composer update` will install the
     // latest Symfony, this should be done for the job corresponding to the
     // latest symfony version.
-    run('composer update --prefer-dist');
+    run('COMPOSER_MEMORY_LIMIT=-1 composer update --prefer-dist');
 } else {
-    run('composer require --prefer-dist symfony/symfony:'.getSymfonyVersion());
+    run('COMPOSER_MEMORY_LIMIT=-1 composer require --prefer-dist symfony/symfony:'.getSymfonyVersion());
 }
 
 if (shouldBuildDocs()) {
     run('sudo apt-get -qq update');
-    run('sudo apt-get install -y graphviz');
-    run('sudo -H pip install -r requirements.txt');
+    run('sudo apt-get install -y graphviz python3 python3-pip');
+    run('pip3 install --user virtualenv');
+    run('virtualenv venv');
+    run('venv/bin/pip install -r requirements.txt');
 }

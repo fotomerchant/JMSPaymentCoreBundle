@@ -2,6 +2,7 @@
 
 namespace JMS\Payment\CoreBundle\Tests\Functional;
 
+use Doctrine\ORM\EntityManager;
 use JMS\Payment\CoreBundle\Tests\Functional\TestBundle\Entity\Order;
 use JMS\Payment\CoreBundle\Util\Number;
 
@@ -9,7 +10,8 @@ abstract class BasePaymentWorkflowTest extends BaseTestCase
 {
     protected function getRawExtendedData($paymentInstruction)
     {
-        $em = self::$kernel->getContainer()->get('em');
+        /** @var EntityManager $em */
+        $em = $this->getContainer()->get('doctrine.orm.entity_manager');
 
         $stmt = $em->getConnection()->prepare(
             'SELECT extended_data FROM payment_instructions WHERE id = '.$paymentInstruction->getId()
@@ -26,14 +28,15 @@ abstract class BasePaymentWorkflowTest extends BaseTestCase
         $client = $this->createClient();
         $this->importDatabaseSchema();
 
-        $em = self::$kernel->getContainer()->get('em');
-        $router = self::$kernel->getContainer()->get('router');
+        /** @var EntityManager $em */
+        $em = $this->getContainer()->get('doctrine.orm.entity_manager');
+        $router = $this->getContainer()->get('router');
 
         $order = new Order(123.45);
         $em->persist($order);
         $em->flush();
 
-        $crawler = $client->request('GET', $router->generate('payment_details', array('id' => $order->getId())));
+        $crawler = $client->request('GET', $router->generate('payment_details', ['orderId' => $order->getId()]));
         $form = $crawler->selectButton('submit_btn')->form();
         $form['jms_choose_payment_method[method]']->select('test_plugin');
         $client->submit($form);

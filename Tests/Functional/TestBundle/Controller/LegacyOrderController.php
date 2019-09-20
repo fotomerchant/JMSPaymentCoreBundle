@@ -2,31 +2,15 @@
 
 namespace JMS\Payment\CoreBundle\Tests\Functional\TestBundle\Controller;
 
-use JMS\Payment\CoreBundle\PluginController\PluginController;
 use JMS\Payment\CoreBundle\Tests\Functional\TestBundle\Entity\Order;
 use JMS\Payment\CoreBundle\Util\Legacy;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Template;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Component\Form\FormFactory;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * @Route("/order")
- *
- * @author Johannes
- */
-class OrderController extends AbstractController
+class LegacyOrderController extends Controller
 {
-    /**
-     * @Route("/{orderId}/payment-details", name = "payment_details")
-     * @Template("TestBundle:Order:paymentDetails.html.twig")
-     *
-     * @param int $orderId
-     * @param PluginController $pluginController
-     * @return array|Response
-     */
-    public function paymentDetailsAction($orderId, PluginController $pluginController)
+    public function paymentDetailsAction($orderId)
     {
         $order = $this->getDoctrine()->getManager()->getRepository(Order::class)->find($orderId);
 
@@ -35,7 +19,10 @@ class OrderController extends AbstractController
             : 'jms_choose_payment_method'
         ;
 
-        $form = $this->get('form.factory')->create($formType, null, array(
+        /** @var FormFactory $formFactory */
+        $formFactory = $this->get('form.factory');
+
+        $form = $formFactory->create($formType, null, array(
             'currency' => 'EUR',
             'amount' => $order->getAmount(),
             'predefined_data' => array(
@@ -46,6 +33,7 @@ class OrderController extends AbstractController
         ));
 
         $em = $this->getDoctrine()->getManager();
+        $ppc = $this->get('payment.plugin_controller');
 
         $request = Legacy::supportsRequestService()
             ? $this->getRequest()
@@ -56,7 +44,7 @@ class OrderController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $instruction = $form->getData();
-            $pluginController->createPaymentInstruction($instruction);
+            $ppc->createPaymentInstruction($instruction);
 
             $order->setPaymentInstruction($instruction);
             $em->persist($order);
@@ -65,6 +53,8 @@ class OrderController extends AbstractController
             return new Response('', 201);
         }
 
-        return array('form' => $form->createView());
+        return $this->render('TestBundle:Order:paymentDetails.html.twig', [
+            'form' => $form->createView()
+        ]);
     }
 }
